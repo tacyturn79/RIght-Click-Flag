@@ -147,7 +147,7 @@
         <button id="replayBtn" style="display:none" onclick="loadSVGImage()">Rejouer</button>
     </div>
     <div id="status"></div>
-    <div id="loose"><img id="rcs" src="RCS.gif"></div>
+    <div id="loose"><img id="rcs" src="/RCS.gif"></div>
     <div id="game" class="window-body"></div>
 
     <script>
@@ -274,7 +274,7 @@
             } else {
                 flags.add(i);
                 cell.classList.add("flag");
-                cell.innerHTML=`<img style="width:100%" src="skull.jpg">`;
+                cell.innerHTML=`<img style="width:100%" src="/skull.jpg">`;
             }
             updateCounter();
         }
