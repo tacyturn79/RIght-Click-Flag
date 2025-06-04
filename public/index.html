@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Right Click Flag</title>
+  <style>
+:root { 
+  --case-size: 20px;
+}
+    @font-face {
+        font-family: digital;
+        src: url(./digital-7.ttf);
+    }
+    body {
+      font-family: 'Arial', monospace;
+      text-align: center;
+      background: silver;
+      margin: 0;
+      padding: 0;
+    }
+
+    button {display: none;}
+    h1 {
+      background: #c0c0c0;
+      border-bottom: 2px solid #808080;
+      margin: 0;
+      font-size: 1.3rem!important;
+      padding: 10px;
+      text-shadow: 1px 1px white;
+    }
+    #controls {
+      margin: 2px auto;
+      padding: 2px;
+      background: #c0c0c0;
+      display: flex;
+      flex-direction: row;
+      width: 600px;
+      justify-content: space-between;
+    }
+    #game {
+      display: grid;
+      grid-template-columns: repeat(32, var(--case-size));
+      width: fit-content; 
+      max-width: 668px;
+      grid-template-rows: repeat(32, var(--case-size));
+      justify-content: center;
+      margin: 0 auto;
+      background: #c0c0c0;
+      border: 4px solid #808080;
+      box-shadow: inset -2px -2px white, inset 2px 2px #404040;
+    }
+    .cell {
+      width: var(--case-size); 
+      aspect-ratio: 1/1;
+      border: 1px solid #808080;
+      background-color: #c0c0c0;
+      cursor: pointer;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      color: black;
+      box-shadow: inset 2px 2px white, inset -2px -2px #404040;
+    }
+    .revealed {
+      background-color: #dcdcdc;
+      box-shadow: none;
+      border: 1px solid #999;
+    }
+    .mine {
+      background-color: red;
+    }
+    .flag {
+      background-color: #ffe600;
+    }
+    #status {
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    #loose {max-width: 600px;margin: auto;display: none;}
+
+    #rcs {
+        width: 100%;
+    }
+
+    #counter {
+        width: 100px;
+        border: 1px solid #808080;
+        font-family: digital;
+        font-size: 3rem;
+        background-color: black;
+        color: red;
+    }
+
+    .white {    
+        background-color: white;
+        width: 20px;
+        height: 20px;
+    }
+    .black {
+        background-color:#22133d;
+        width: 20px;
+        height: 20px;
+    }
+    .green {
+        background-color: #7ec292;
+        width: 20px;
+        height: 20px;
+    }
+    .purple {
+        background-color:#7739d1;
+        width: 20px;
+        height: 20px;
+    }
+
+    #type {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+  </style>
+    <link rel="stylesheet" href="https://unpkg.com/98.css" />
+</head>
+<body>
+    <div class="title-bar">
+        <div class="title-bar-text">Right Click Flag</div>
+        <div class="title-bar-controls">
+            <button aria-label="Minimize"></button>
+            <button aria-label="Restore"></button>
+            <button aria-label="Close"></button>
+        </div>
+    </div>
+    <h1>Right Click Flag</h1>
+    <div id="controls" class="window-body">
+        <button id="playBtn" onclick="startGame()">PLAY</button>
+        <button id="replayBtn" style="display:none" onclick="startGame()">Rejouer</button>
+        <div id="counter"></div>
+        <div id="type">
+            <div id="w" class="white"></div>
+            <div id="b" class="black col"></div>
+            <div id="g" class="green col"></div>
+            <div id="p" class="purple col"></div>
+        </div>
+        <button id="replayBtn" style="display:none" onclick="loadSVGImage()">Rejouer</button>
+    </div>
+    <div id="status"></div>
+    <div id="loose"><img id="rcs" src="RCS.gif"></div>
+    <div id="game" class="window-body"></div>
+
+    <script>
+        const SIZE = 32;
+        let pixelColors = [];
+        let mines = new Set();
+        let revealed = new Set();
+        let flags = new Set();
+        let gameEnded = false;
+        let totalMines = 0;
+        let colors=["blue","red","green",'#7739d1','#7ec292','#22133d']
+        let type=Math.random(0,1);
+
+        if (type<0.5) { 
+            document.getElementById("w").textContent = "\u2739";
+        } else { 
+            document.getElementById("b").textContent = "\u2739";
+            document.getElementById("g").textContent = "\u2739";
+            document.getElementById("p").textContent = "\u2739";
+        }
+
+        function updateCounter() {
+            const remaining = Math.max(0, totalMines - flags.size);
+            document.getElementById("counter").textContent = `${remaining}`;
+        }
+
+        function loadSVGImage() {
+            fetch('/api/etherscan')
+                .then(res => res.json())
+                .then(json => {
+                    if (!json.result || json.result === '0x') {
+                        document.getElementById("status").textContent = "Error: empty tokenURI.";
+                        return;
+                    }
+
+                    const hex = json.result.slice(130).replace(/00+$/, '');
+                    const uri = decodeURIComponent(hex.replace(/(..)/g, '%$1'));
+
+                    if (uri.startsWith("data:application/json;base64,")) {
+                        const base64 = uri.split(",")[1];
+                        const metadata = JSON.parse(atob(base64));
+
+                        if (metadata.image) {
+                            const img = new Image();
+                            img.crossOrigin = "Anonymous";
+                            img.onload = () => {
+                                const canvas = document.createElement("canvas");
+                                canvas.width = SIZE;
+                                canvas.height = SIZE;
+                                const ctx = canvas.getContext("2d");
+                                ctx.drawImage(img, 0, 0, SIZE, SIZE);
+                                const imageData = ctx.getImageData(0, 0, SIZE, SIZE).data;
+
+                                pixelColors = [];
+                                mines.clear();
+                                revealed.clear();
+                                flags.clear();
+                                gameEnded = false;
+
+                                for (let i = 0; i < imageData.length; i += 4) {
+                                    const r = imageData[i];
+                                    const g = imageData[i + 1];
+                                    const b = imageData[i + 2];
+                                    const a = imageData[i + 3];
+                                    pixelColors.push(`rgb(${r},${g},${b})`);
+
+                                    function isWhite(r, g, b) {
+                                        return r >= 250 && g >= 250 && b >= 250;
+                                    }
+                                    if (type<0.5){
+                                        if (a > 0 && isWhite(r, g, b)) {
+                                            mines.add(i / 4);
+                                        }
+                                    } else {
+                                        if (a > 0 && !isWhite(r, g, b)) {
+                                            mines.add(i / 4);
+                                        }
+                                    }
+                                }
+                                totalMines = mines.size;
+                                updateCounter();
+                                drawBoard();
+                            };
+                            img.src = metadata.image;
+                            document.getElementById("nft")?.remove();
+                        }
+                    }
+                })
+                .catch(err => {
+                    console.error(err);
+                    document.getElementById("status").textContent = "Error loading NFT.";
+                });
+        }
+
+        function drawBoard() {
+            const game = document.getElementById("game");
+            game.innerHTML = "";
+            for (let i = 0; i < 1024; i++) {
+                const cell = document.createElement("div");
+                cell.className = "cell";
+                cell.dataset.index = i;
+                cell.onclick = (e) => {
+                    if (e.shiftKey || e.button === 2) {
+                        toggleFlag(i);
+                    } else {
+                        reveal(i);
+                    }
+                };
+                cell.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    toggleFlag(i);
+                };
+                game.appendChild(cell);
+            }
+        }
+
+        function toggleFlag(i) {
+            if (revealed.has(i) || gameEnded) return;
+            const cell = document.querySelector(`.cell[data-index='${i}']`);
+            if (flags.has(i)) {
+                flags.delete(i);
+                cell.classList.remove("flag");
+                cell.textContent = "";
+            } else {
+                flags.add(i);
+                cell.classList.add("flag");
+                cell.innerHTML=`<img style="width:100%" src="skull.jpg">`;
+            }
+            updateCounter();
+        }
+
+        function getNeighbors(i) {
+            const x = i % SIZE;
+            const y = Math.floor(i / SIZE);
+            const neighbors = [];
+            
+            for (let dy = -1; dy <= 1; dy++) {
+                for (let dx = -1; dx <= 1; dx++) {
+                    if (dx === 0 && dy === 0) continue;
+                    const nx = x + dx, ny = y + dy;
+                    if (nx >= 0 && nx < SIZE && ny >= 0 && ny < SIZE) {
+                        neighbors.push(ny * SIZE + nx);
+                    }
+                }
+            }
+
+            return neighbors;
+        }
+
+        function reveal(i) {
+            if (revealed.has(i) || flags.has(i) || gameEnded) return;
+            const cell = document.querySelector(`.cell[data-index='${i}']`);
+            if (mines.has(i)) {
+                cell.classList.add("mine");
+                document.getElementById("counter").textContent = "XXX";
+                document.getElementById("status").textContent = "";
+                gameEnded = true;
+
+                document.querySelectorAll('.cell').forEach((c, idx) => {
+                    c.style.backgroundColor = pixelColors[idx];
+                    c.textContent = '';
+                });
+
+                setTimeout(() => { 
+                    startGame();
+                    document.getElementById("loose").style.display="block";
+                    document.getElementById("game").style.display="none";
+                }, 1000);
+
+                setTimeout(() => { 
+                    startGame();
+                    document.getElementById("loose").style.display="none";
+                    document.getElementById("game").style.display="grid";
+                    gameEnded = false;
+                }, 2000);
+
+                return;
+            }
+
+            cell.style.backgroundColor = pixelColors[i];
+            cell.classList.add("revealed");
+            revealed.add(i);
+
+            const neighborMines = getNeighbors(i).filter(n => mines.has(n)).length;
+            if (neighborMines > 0) {
+                cell.textContent = neighborMines;
+                if (type>0.5) {
+                    cell.style.color=colors[neighborMines-1];
+                } else { 
+                    cell.style.color=colors[(neighborMines-1)%3];
+                }
+            } else {
+                for (const n of getNeighbors(i)) reveal(n);
+            }
+
+            if (revealed.size === 1024 - mines.size) {
+                document.getElementById("status").textContent = "🎉Congrats ";
+                gameEnded = true;
+            }
+        }
+
+        function startGame() {
+            document.getElementById("status").textContent = "";
+            document.getElementById("replayBtn").style.display = "none";
+            loadSVGImage();
+        }
+
+        window.onload = () => {
+            loadSVGImage();
+        };
+    </script>
+</body>
+</html> 
