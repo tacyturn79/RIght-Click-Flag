@@ -35,10 +35,10 @@ const tokenId = 0; // You can modify this as needed
   url.searchParams.set('tag', 'latest');
   url.searchParams.set('apikey', API_KEY);
         const response = await fetch(url);
-        const data = await response.json();
+        const datar = await response.json();
         
         // Store in cache
-        cache.set('svgData', data);
+        cache.set('svgData', datar);
         
         res.json(data);
     } catch (error) {
