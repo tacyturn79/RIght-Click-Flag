@@ -18,12 +18,22 @@ app.get('/api/etherscan', async (req, res) => {
         if (cachedData) {
             return res.json(cachedData);
         }
+const tokenId = 0; // You can modify this as needed
 
+  const API_KEY = "88YEWP8NGP2X5S34NGAFX9ZXDBVNUX3ZCJ";
+  const CONTRACT = "0xd16809c0a7d82c9e7552a01fd608fff90efb564f";
         // If not in cache, fetch from Etherscan
-        const apiKey = process.env.ETHERSCAN_API_KEY;
-        const contractAddress = '0xd16809c0a7d82c9e7552a01fd608fff90efb564f'; // Replace with your contract address
-        const url = `https://api.etherscan.io/api?module=contract&action=getabi&address=${contractAddress}&apikey=${apiKey}`;
-        
+        const methodID = "0xc87b56dd";
+  const hexTokenId = tokenId.toString(16).padStart(64, '0');
+  const data = methodID + hexTokenId;
+
+  const url = new URL('https://api.etherscan.io/api');
+  url.searchParams.set('module', 'proxy');
+  url.searchParams.set('action', 'eth_call');
+  url.searchParams.set('to', CONTRACT);
+  url.searchParams.set('data', data);
+  url.searchParams.set('tag', 'latest');
+  url.searchParams.set('apikey', API_KEY);
         const response = await fetch(url);
         const data = await response.json();
         
