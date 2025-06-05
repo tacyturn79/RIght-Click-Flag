@@ -312,18 +312,16 @@
                 });
 
                 setTimeout(() => { 
-                    startGame();
                     document.getElementById("loose").style.display="block";
                     document.getElementById("game").style.display="none";
                 }, 1000);
 
                 setTimeout(() => { 
-                    startGame();
                     document.getElementById("loose").style.display="none";
                     document.getElementById("game").style.display="grid";
                     gameEnded = false;
-                }, 2000);
-
+                    startGame();
+                }, 3000);
                 return;
             }
 
